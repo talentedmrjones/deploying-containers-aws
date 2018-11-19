@@ -1,0 +1,163 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "ECS Auto Scaling Groups"
+
+Parameters:
+  NetworkStack:
+    Type: "String"
+    Description: "Network stack to apply to."
+
+  ClusterName:
+    Type: "String"
+    Description: "A name for this cluster."
+
+  NumNodes:
+    Type: String
+    Description: How many nodes for this cluster?
+    Default: 0
+
+  AMI:
+    Type: String
+
+Resources:
+
+  # A role so that our EC2 instances can communicate with ECS
+  EC2HostRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub EC2HostRoleFor${ClusterName}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        # attach the EC2 Container Service policy that will allow the instance
+        # to communicate with ECS, and this policy includes Cloudwatch Logs permissions
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  # A profile bridges roles with instances
+  EcsNodeProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      InstanceProfileName: !Sub EcsNodeProfile${ClusterName}
+      Roles:
+        - !Ref EC2HostRole
+
+  # create a role for the ECS service itself
+  # this particular role only needs to be created ONCE
+  # it does NOT need to be created per cluster
+  EcsServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: EcsServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        # allows ECS to manage resources like ELB for us
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
+
+
+  # Define a cluster in ECS. This is the *logical grouping* not the actual hosts
+  EcsCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  # Launch Configuration defines WHAT gets launched
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      EbsOptimized: True
+      IamInstanceProfile: !Ref EcsNodeProfile
+      ImageId: !Ref AMI
+      InstanceMonitoring: True
+      InstanceType: c5.large
+      SecurityGroups:
+        - !Ref EcsSecurityGroup
+
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - "\n"
+            - # this line creates the "array within the array" that Join requires as the 2nd arg
+              - "#!/bin/bash"
+              # configure the ecs agent to register with the cluster we defined earlier
+              - !Join ["",["echo \"ECS_CLUSTER=", !Ref ClusterName, "\" >> /etc/ecs/ecs.config"]]
+
+  # Auto Scaling Group defines WHERE it gets launched
+  ClusterAutoScalingGroup:
+    DependsOn: EcsCluster # ensure ECS cluster is created first otherwise nodes won't have anything to join
+    Type: AWS::AutoScaling::AutoScalingGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 2
+        MinSuccessfulInstancesPercent: 100
+        PauseTime: 180
+        WaitOnResourceSignals: false
+    Properties:
+      DesiredCapacity: !Ref NumNodes
+      HealthCheckGracePeriod: 420
+      HealthCheckType: EC2
+      LaunchConfigurationName: !Ref LaunchConfig
+      MaxSize: !Ref NumNodes
+      MinSize: !Ref NumNodes
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetNodesAId
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetNodesBId
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetNodesCId
+      Tags:
+        - Key: Cluster
+          Value: !Ref ClusterName
+          PropagateAtLaunch: True
+
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref "AWS::StackName"
+      GroupDescription: !Ref "AWS::StackName"
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcId
+      Tags:
+        - Key: Cluster
+          Value: !Ref ClusterName
+
+  EcsSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref EcsSecurityGroup
+      CidrIp: 0.0.0.0/0
+      IpProtocol: "-1" # allow all traffic outbound
+
+
+  # allow ECS nodes to receive traffic from the local VPC range
+  # limit source to respective ELB for added security
+  EcsSecurityGroupIngressAllowTCP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EcsSecurityGroup
+      CidrIp:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcCidr
+      IpProtocol: "tcp"
+      FromPort: 32768 # default ephemeral range for ECS optimized AMI
+      ToPort: 61000   # these are the ports used with dynamic port mapping

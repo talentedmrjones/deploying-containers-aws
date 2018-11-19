@@ -1,0 +1,155 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Microservices VPC and Subnets"
+
+Parameters:
+  VpcCidrPrefix:
+    Type: "String"
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})"
+
+Resources:
+  Vpc:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".0.0/21"]]
+      EnableDnsSupport: True
+      EnableDnsHostnames: True
+      Tags:
+      - Key: Name
+        Value: !Ref "AWS::StackName"
+
+##################################
+# create three /24 subnets to hold Elastic Load Balancer(s). 251 usable IPs each gives plenty of room to scale
+##################################
+  subnetElbA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".0.0/24"]] # .0.0-.0.255
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: ELB A
+      - Key: Scope
+        Value: public
+      VpcId: !Ref Vpc
+
+  subnetElbB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".1.0/24"]] # .1.0-.1.255
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: ELB B
+      - Key: Scope
+        Value: public
+      VpcId: !Ref Vpc
+
+  subnetElbC:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".2.0/24"]] # .2.0-.2.255
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: ELB C
+      - Key: Scope
+        Value: public
+      VpcId: !Ref Vpc
+
+##################################
+# create three /24 subnets to hold ec2 instances. 251 usable IPs gives plenty of room to scale
+##################################
+  subnetNodesA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".3.0/24"]] # .3.0 - .3.255
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: Cluster Nodes A
+      - Key: Scope
+        Value: private
+      VpcId: !Ref Vpc
+
+  subnetNodesB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".4.0/24"]] # .4.0 - .4.255
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: Cluster Nodes B
+      - Key: Scope
+        Value: private
+      VpcId: !Ref Vpc
+
+  subnetNodesC:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Join [ "", [!Ref VpcCidrPrefix, ".5.0/24"]] # .5.0 - .5.255
+      MapPublicIpOnLaunch: false
+      Tags:
+      - Key: Name
+        Value: Cluster Nodes C
+      - Key: Scope
+        Value: private
+      VpcId: !Ref Vpc
+
+
+
+Outputs:
+  VpcId:
+      Description : "VPC ID"
+      Value:  !Ref Vpc
+      Export:                               # export the ID of the Vpc so other stacks can import it
+        Name: !Sub ${AWS::StackName}-VpcId
+
+  VpcCidr:
+      Description : "VPC ID"
+      Value:  !GetAtt Vpc.CidrBlock
+      Export:                               # export the IP range of the Vpc so other stacks can import it
+        Name: !Sub ${AWS::StackName}-VpcCidr
+
+  SubnetElbAId:
+      Description : "Public A Subnet ID"
+      Value:  !Ref subnetElbA
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetElbAId
+
+  SubnetElbBId:
+      Description : "Public B Subnet ID"
+      Value:  !Ref subnetElbB
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetElbBId
+
+  SubnetElbCId:
+      Description : "Public C Subnet ID"
+      Value:  !Ref subnetElbC
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetElbCId
+
+  # will be used for ECS cluster auto scaling group later
+  SubnetNodesAId:
+      Description : "Cluster Nodes Subnet A ID"
+      Value:  !Ref subnetNodesA
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetNodesAId
+
+  SubnetNodesBId:
+      Description : "Cluster Nodes Subnet B ID"
+      Value:  !Ref subnetNodesB
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetNodesBId
+
+  SubnetNodesCId:
+      Description : "Cluster Nodes Subnet C ID"
+      Value:  !Ref subnetNodesC
+      Export:
+        Name: !Sub ${AWS::StackName}-SubnetNodesCId

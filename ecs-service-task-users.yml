@@ -1,0 +1,77 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "ECS service and task"
+
+Parameters:
+  ClusterName:
+    Type: String
+    Description: "Specify which ECS cluster the service belongs to"
+  AlbStack:
+    Type: String
+    Description: "Specify name of the CloudFormation stack for ALB"
+
+Resources:
+
+  # grant the TASK (collection of containers) the ability to perform its job
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # create a group in CloudWatch logs for the app to write to
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /microservices/users
+
+  # create the service that will maintain our containers for this microservice
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: users
+      Cluster: !Ref ClusterName
+      DesiredCount: 3
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: EC2
+      LoadBalancers:
+        - ContainerName: users
+          ContainerPort: 80
+          TargetGroupArn:
+            Fn::ImportValue:
+              !Sub ${AlbStack}-TargetGroupForServiceUsers
+
+  # define the collection of containers and cpu/memory/volume requirements
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: users
+      RequiresCompatibilities:
+        - EC2
+      Memory: 512
+      Cpu: 256
+      NetworkMode: bridge
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      ContainerDefinitions:
+        - Name: users
+          Image: nginxdemos/hello # start with a ready made image and update once ImageRepo has an image
+          Environment:
+            - Name: SERVICE
+              Value: users
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: !Ref AWS::StackName

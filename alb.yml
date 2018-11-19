@@ -1,0 +1,253 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Application Load Balancer for microservices in ECS"
+
+Parameters:
+  NetworkStack:
+    Type: "String"
+    Description: "Network stack to apply to."
+
+  ElbName:
+    Type: String
+    Description: "Name for this ELB"
+
+Resources:
+
+  # create an APPLICATION load balancer for use by
+  # containers in our microservices ECS cluster
+  Alb:
+    # http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref ElbName
+      Scheme: internet-facing
+      Subnets:
+          # add the 3 DMZ (public) subnets for access to the internet
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetElbAId
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetElbBId
+        - Fn::ImportValue:
+            !Sub ${NetworkStack}-SubnetElbCId
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '10'
+      SecurityGroups:
+        - Ref: AlbSecurityGroup
+      Tags:
+        - Key: Purpose
+          Value: microservices
+
+  # create a Security Group specifically for our ECS cluster
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref "AWS::StackName"
+      GroupDescription: !Ref "AWS::StackName"
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcId
+
+  # Allow outbound traffic FROM load balancer
+  AlbSecurityGroupEgressEphemeral:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      CidrIp: # only allow ALB to INITIATE new connections to hosts in this VPC
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcCidr
+      IpProtocol: "tcp" # allow only tcp
+      FromPort: 32768 # default ephemeral range for ECS optimized AMI
+      ToPort: 61000   # these are the ports used with dynamic port mapping
+
+  # Allow outbound traffic FROM load balancer
+  AlbSecurityGroupEgressHTTP:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      CidrIp: # only allow ALB to INITIATE new connections to hosts in this VPC
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcCidr
+      IpProtocol: "tcp" # allow only tcp
+      FromPort: 80
+      ToPort: 80
+
+  # Allow outbound traffic FROM load balancer
+  AlbSecurityGroupEgressHTTPS:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      CidrIp: # only allow ALB to INITIATE new connections to hosts in this VPC
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcCidr
+      IpProtocol: "tcp" # allow only tcp
+      FromPort: 443
+      ToPort: 443
+
+
+  # allow Load balancer to receive HTTP
+  AlbSecurityGroupIngressAllowHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      CidrIp: 0.0.0.0/0
+      IpProtocol: "tcp"
+      FromPort: 80
+      ToPort: 80
+
+  # allow Load balancer to receive HTTPS
+  AlbSecurityGroupIngressAllowHTTPS:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      CidrIp: 0.0.0.0/0
+      IpProtocol: "tcp"
+      FromPort: 443
+      ToPort: 443
+
+  # Load Balancer needs a listener
+  ListenerForAlb:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupForServiceUsers
+
+
+  # target group for the users service
+  TargetGroupForServiceUsers:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/users/status"
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200'
+      Name: service-users
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcId
+      Tags:
+        - Key: Purpose
+          Value: 'microservices:users'
+
+  # create a listener rule that routes /users/* to users service
+  # will need a rule for each service
+  ListenerRuleForServiceUsers:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupForServiceUsers
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/users/*"
+      ListenerArn: !Ref ListenerForAlb
+      Priority: 1
+
+  # target group for the billing service
+  TargetGroupForServiceBilling:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/billing/status"
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200'
+      Name: service-billing
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcId
+
+  # create a listener rule that routes /billing/* to users service
+  # will need a rule for each service
+  ListenerRuleForServiceBilling:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupForServiceBilling
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/billing/*"
+      ListenerArn: !Ref ListenerForAlb
+      Priority: 3
+
+  # target group for the messages service
+  TargetGroupForServiceMessages:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/messages/status"
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200'
+      Name: service-fargate-messages
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStack}-VpcId
+      Tags:
+        - Key: Purpose
+          Value: 'microservices:messages'
+
+  # create a listener rule that routes /messages/* to messages service
+  # will need a rule for each service
+  ListenerRuleForServiceMessages:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupForServiceMessages
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/messages/*"
+      ListenerArn: !Ref ListenerForAlb
+      Priority: 2
+
+Outputs:
+  TargetGroupForServiceUsers:
+      Description : "TargetGroupForServiceUsers"
+      Value:  !Ref TargetGroupForServiceUsers
+      Export:
+        Name: !Sub ${AWS::StackName}-TargetGroupForServiceUsers
+  TargetGroupForServiceBilling:
+      Description : "TargetGroupForServiceBilling"
+      Value:  !Ref TargetGroupForServiceBilling
+      Export:
+        Name: !Sub ${AWS::StackName}-TargetGroupForServiceBilling
+  TargetGroupForServiceMessages:
+      Description : "TargetGroupForServiceMessages"
+      Value:  !Ref TargetGroupForServiceMessages
+      Export:
+        Name: !Sub ${AWS::StackName}-TargetGroupForServiceMessages
