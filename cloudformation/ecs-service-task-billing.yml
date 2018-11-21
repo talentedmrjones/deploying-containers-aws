@@ -26,7 +26,19 @@ Resources:
               Service: ecs-tasks.amazonaws.com
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-        - arn:aws:iam::301228794388:policy/AccessToDockerCeruleanSecret
+      Policies:
+        # this inline policy allows this role to access the secrets manager
+        # in order to retrieve the username and password for the
+        # private docker registry
+        - PolicyName: "AccessToSecretStore"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: "secretsmanager:GetSecretValue"
+                # this resource exists in Richard's account
+                # REPLACE it with the ARN of YOUR secret
+                Resource: "arn:aws:secretsmanager:us-east-2:301228794388:secret:docker.cerulean-gU0eHG"
 
   # create a group in CloudWatch logs for the app to write to
   LogGroup:

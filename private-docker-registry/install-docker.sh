@@ -34,6 +34,7 @@ docker run -d \
   registry:2
 
 # on local
+docker pull nginxdemos/hello
 docker login -u admin -p password docker.cerulean.systems
 docker tag nginxdemos/hello docker.cerulean.systems/hello
 docker push docker.cerulean.systems/hello
