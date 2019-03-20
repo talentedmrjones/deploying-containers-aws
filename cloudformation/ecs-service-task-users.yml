@@ -57,7 +57,7 @@ Resources:
       RequiresCompatibilities:
         - EC2
       Memory: 512
-      Cpu: 256
+      Cpu: 512
       NetworkMode: bridge
       ExecutionRoleArn: !Ref TaskExecutionRole
       ContainerDefinitions:

@@ -38,7 +38,7 @@ Resources:
                 Action: "secretsmanager:GetSecretValue"
                 # this resource exists in Richard's account
                 # REPLACE it with the ARN of YOUR secret
-                Resource: "arn:aws:secretsmanager:us-east-2:301228794388:secret:docker.cerulean-gU0eHG"
+                Resource: "arn:aws:secretsmanager:us-east-2:666656957083:secret:privateregistryauth-0ka8pQ"
 
   # create a group in CloudWatch logs for the app to write to
   LogGroup:
@@ -77,7 +77,7 @@ Resources:
         - Name: billing
           Image: docker.cerulean.systems/hello # start with a ready made image and update once ImageRepo has an image
           RepositoryCredentials:
-            CredentialsParameter: "arn:aws:secretsmanager:us-east-2:301228794388:secret:docker.cerulean-gU0eHG"
+            CredentialsParameter: "arn:aws:secretsmanager:us-east-2:666656957083:secret:privateregistryauth-0ka8pQ"
           Environment:
             - Name: SERVICE
               Value: billing
