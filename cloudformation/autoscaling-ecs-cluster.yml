@@ -17,7 +17,7 @@ Parameters:
     Default: 0
 
   AMI:
-    Type: String
+    Type: AWS::EC2::Image::Id
 
 Resources:
 

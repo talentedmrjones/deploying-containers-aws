@@ -1,12 +1,12 @@
 
 NETWORK_STACK="microservices-network"
-REGION=$1
+REGION="us-east-2"
 
 # create the base VPC and Subnets (public and private)
 aws --region $REGION cloudformation create-stack \
 --stack-name ${NETWORK_STACK} \
 --template-body file://./vpc-subnets.yml \
---parameters ParameterKey=VpcCidrPrefix,ParameterValue=10.0 \
+--parameters ParameterKey=VpcCidrPrefix,ParameterValue=10.100.0.0/16 \
 && aws --region $REGION cloudformation wait stack-create-complete --stack-name ${NETWORK_STACK}
 
 # create the necessary internet access
