@@ -1,6 +1,7 @@
 
 NETWORK_STACK="microservices-network"
 REGION="us-east-2"
+ARTIFACT_BUCKET="cerulean-operations-us-east-2" # modify this to YOUR OWN value
 
 # create the base VPC and Subnets (public and private)
 aws --region $REGION cloudformation create-stack \
@@ -54,12 +55,15 @@ ParameterKey=AlbStack,ParameterValue=microservices-alb-dev-ohio \
 --capabilities "CAPABILITY_NAMED_IAM" \
 && aws --region $REGION cloudformation wait stack-create-complete --stack-name microservices-service-users
 
+# CodePipeline and CodeBuild require access to a common S3 bucket
+aws --region $REGION s3 mb s3://${ARTIFACT_BUCKET}
+
 # create the CICD pipeline for USERS
 aws --region $REGION cloudformation create-stack \
 --stack-name microservices-pipeline-users \
 --template-body file://./pipeline.yml \
 --parameters \
-ParameterKey=ArtifactBucket,ParameterValue=cerulean-operations-us-east-2 \
+ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
 ParameterKey=ClusterName,ParameterValue=microservices-ecs \
 ParameterKey=Service,ParameterValue=users \
 --capabilities "CAPABILITY_NAMED_IAM" \
@@ -83,7 +87,7 @@ aws --region $REGION cloudformation create-stack \
 --stack-name microservices-pipeline-messages \
 --template-body file://./pipeline.yml \
 --parameters \
-ParameterKey=ArtifactBucket,ParameterValue=cerulean-operations-us-east-2 \
+ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
 ParameterKey=ClusterName,ParameterValue=microservices-ecs \
 ParameterKey=Service,ParameterValue=messages \
 --capabilities "CAPABILITY_NAMED_IAM" \
