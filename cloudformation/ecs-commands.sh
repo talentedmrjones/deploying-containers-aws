@@ -6,7 +6,7 @@ REGION="us-east-2"
 aws --region $REGION cloudformation create-stack \
 --stack-name ${NETWORK_STACK} \
 --template-body file://./vpc-subnets.yml \
---parameters ParameterKey=VpcCidrPrefix,ParameterValue=10.100.0.0/16 \
+--parameters ParameterKey=VpcSubnetCidrs,ParameterValue=10.100.0.0/16 \
 && aws --region $REGION cloudformation wait stack-create-complete --stack-name ${NETWORK_STACK}
 
 # create the necessary internet access
