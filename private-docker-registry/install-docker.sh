@@ -10,13 +10,13 @@ docker info
 # this is NOT OK for EC2 <-> Anything else!
 openssl req -x509 -newkey rsa:4096 -keyout server-key.pem -out server-cert.pem -days 365 -nodes -sha256
 
-# openssl genrsa -aes256 -out ca-key.pem 4096
-# openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem
-# openssl genrsa -out server-key.pem 4096
-# openssl req -subj "/CN=docker.cerulean.systems" -sha256 -new -key server-key.pem -out server.csr
-# echo subjectAltName = DNS:docker.cerulean.systems,IP:13.58.175.120 >> extfile.cnf
-# echo extendedKeyUsage = clientAuth >> extfile.cnf
-# openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile extfile.cnf
+openssl genrsa -aes256 -out ca-key.pem 4096
+openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem
+openssl genrsa -out server-key.pem 4096
+openssl req -subj "/CN=docker.cerulean.systems" -sha256 -new -key server-key.pem -out server.csr
+echo subjectAltName = DNS:docker.cerulean.systems,IP:13.58.175.120 >> extfile.cnf
+echo extendedKeyUsage = clientAuth >> extfile.cnf
+openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile extfile.cnf
 
 docker run --entrypoint htpasswd registry:2 -Bbn admin password >> ./htpasswd
 
@@ -34,8 +34,8 @@ docker run -d \
   registry:2
 
 # on local
-docker pull nginxdemos/hello
+docker pull node:8.11.1-alpine
 docker login -u admin -p password docker.cerulean.systems
-docker tag nginxdemos/hello docker.cerulean.systems/hello
-docker push docker.cerulean.systems/hello
+docker tag node:8.11.1-alpine docker.cerulean.systems/node:8.11.1-alpine
+docker push docker.cerulean.systems/node:8.11.1-alpine
 curl --user admin:password -X GET https://docker.cerulean.systems/v2/_catalog

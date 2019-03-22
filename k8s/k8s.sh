@@ -19,7 +19,7 @@ kubectl get nodes
 
 kubectl create -f ./k8s/deployment.yml
 
-kubectl rollout status deployment/nginx-deployment
+kubectl rollout status deployment/nginxhello
 
 kubectl get pods --show-labels
 
