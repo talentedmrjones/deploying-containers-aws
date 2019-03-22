@@ -92,3 +92,13 @@ ParameterKey=ClusterName,ParameterValue=microservices-ecs \
 ParameterKey=Service,ParameterValue=messages \
 --capabilities "CAPABILITY_NAMED_IAM" \
 && aws --region $REGION cloudformation wait stack-create-complete --stack-name microservices-pipeline-messages
+
+# create BILLING service, pulling from PRIVATE registry
+aws --region $REGION cloudformation create-stack \
+--stack-name microservices-service-billing \
+--template-body file://./ecs-service-task-billing.yml \
+--parameters \
+ParameterKey=ClusterName,ParameterValue=microservices-ecs \
+ParameterKey=AlbStack,ParameterValue=microservices-alb-dev-ohio \
+--capabilities "CAPABILITY_NAMED_IAM" \
+&& aws --region $REGION cloudformation wait stack-create-complete --stack-name microservices-service-billing
