@@ -1,0 +1,73 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "NAT Gateway and Route Table for egress-only public traffic"
+
+Parameters:
+  VpcId:
+    Type: String
+    Description: "Specify the VPC ID."
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet::Id
+
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: "Specify the subnets that should have protected internet access (hybrid)."
+
+Resources:
+
+  # Private subnets will need to reach OUT to the internet while remaining PRIVATE
+  # Network Address Translation solves this, so add a NAT gateway
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  # NAT gateway needs a public Elastic IP address
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+
+  # private subnets need a route table
+  privateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: NAT Routes
+      - Key: Scope
+        Value: private
+
+  privateRouteToInternet:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: privateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0 # all traffic not destined for the VPC range
+      NatGatewayId: !Ref NatGateway   # gets routed through the NAT gateway
+
+  # Route tables need to be associated with subnets
+  privateRouteTableAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref privateRouteTable
+      SubnetId: !Select [0, !Ref PrivateSubnets]
+  
+  privateRouteTableAssociation2:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref privateRouteTable
+      SubnetId: !Select [1, !Ref PrivateSubnets]
+  
+  privateRouteTableAssociation3:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref privateRouteTable
+      SubnetId: !Select [2, !Ref PrivateSubnets]
+
+
+# empty change

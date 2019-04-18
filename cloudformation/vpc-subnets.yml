@@ -5,7 +5,7 @@ Description: "Microservices VPC and Subnets"
 Parameters:
   VpcSubnetCidrs:
     Type: String
-    Description: "CIDR block for VPC."
+    Description: "CIDR block for VPC. Subnets will be derived from this. Minimum size of /21"
 
 Resources:
   Vpc:
@@ -18,9 +18,8 @@ Resources:
       - Key: Name
         Value: !Ref "AWS::StackName"
 
-##################################
 # create three /24 subnets to hold Elastic Load Balancer(s). 251 usable IPs each gives plenty of room to scale
-##################################
+
   subnetElbA:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -60,9 +59,8 @@ Resources:
         Value: public
       VpcId: !Ref Vpc
 
-##################################
-# create three /24 subnets to hold ec2 instances. 251 usable IPs gives plenty of room to scale
-##################################
+# create three /24 subnets to hold ec2 instances or fargate ENIs. 251 usable IPs gives plenty of room to scale
+
   subnetNodesA:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -117,39 +115,39 @@ Outputs:
       Export:                               # export the IP range of the Vpc so other stacks can import it
         Name: !Sub ${AWS::StackName}-VpcCidr
 
-  SubnetElbAId:
+  SubnetElbA:
       Description : "Public A Subnet ID"
       Value:  !Ref subnetElbA
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetElbAId
+        Name: !Sub ${AWS::StackName}-SubnetElbA
 
-  SubnetElbBId:
+  SubnetElbB:
       Description : "Public B Subnet ID"
       Value:  !Ref subnetElbB
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetElbBId
+        Name: !Sub ${AWS::StackName}-SubnetElbB
 
-  SubnetElbCId:
+  SubnetElbC:
       Description : "Public C Subnet ID"
       Value:  !Ref subnetElbC
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetElbCId
+        Name: !Sub ${AWS::StackName}-SubnetElbC
 
   # will be used for ECS cluster auto scaling group later
-  SubnetNodesAId:
+  SubnetNodesA:
       Description : "Cluster Nodes Subnet A ID"
       Value:  !Ref subnetNodesA
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetNodesAId
+        Name: !Sub ${AWS::StackName}-SubnetNodesA
 
-  SubnetNodesBId:
+  SubnetNodesB:
       Description : "Cluster Nodes Subnet B ID"
       Value:  !Ref subnetNodesB
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetNodesBId
+        Name: !Sub ${AWS::StackName}-SubnetNodesB
 
-  SubnetNodesCId:
+  SubnetNodesC:
       Description : "Cluster Nodes Subnet C ID"
       Value:  !Ref subnetNodesC
       Export:
-        Name: !Sub ${AWS::StackName}-SubnetNodesCId
+        Name: !Sub ${AWS::StackName}-SubnetNodesC

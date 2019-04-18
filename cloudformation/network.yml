@@ -1,0 +1,43 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Full environment."
+
+Parameters:
+  VpcSubnetCidrs:
+    Type: String
+    Default: "10.0.0.0/16"
+
+Resources:
+  # Create the VPC and subnets
+  VpcSubnets:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://cerulean-operations.s3.amazonaws.com/deploying-containers-aws/vpc-subnets.yml
+      Parameters:
+        VpcSubnetCidrs: !Ref VpcSubnetCidrs
+
+
+  # Create the internet access
+  InternetAccess:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://cerulean-operations.s3.amazonaws.com/deploying-containers-aws/internet-access.yml
+      Parameters:
+        VpcId: !GetAtt VpcSubnets.Outputs.VpcId
+        Subnets: !Sub 
+          - "${SubnetElbA},${SubnetElbB},${SubnetElbC}"
+          - {SubnetElbA: !GetAtt VpcSubnets.Outputs.SubnetElbA, SubnetElbB: !GetAtt VpcSubnets.Outputs.SubnetElbB, SubnetElbC: !GetAtt VpcSubnets.Outputs.SubnetElbC}
+        
+
+  # Create NAT gateway for network address translation
+  NAT:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: InternetAccess
+    Properties:
+      TemplateURL: https://cerulean-operations.s3.amazonaws.com/deploying-containers-aws/nat.yml
+      Parameters:
+        VpcId: !GetAtt VpcSubnets.Outputs.VpcId
+        PublicSubnet: !GetAtt VpcSubnets.Outputs.SubnetElbA
+        PrivateSubnets:  !Sub
+          - "${SubnetNodesA},${SubnetNodesB},${SubnetNodesC}"
+          - {SubnetNodesA: !GetAtt VpcSubnets.Outputs.SubnetNodesA, SubnetNodesB: !GetAtt VpcSubnets.Outputs.SubnetNodesB, SubnetNodesC: !GetAtt VpcSubnets.Outputs.SubnetNodesC}
