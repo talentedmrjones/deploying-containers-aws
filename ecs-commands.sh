@@ -22,8 +22,8 @@ AMI_ID=$(aws --region $REGION ec2 describe-images --owners amazon --filters Name
 
 # create autoscaling group and ECS cluster
 aws --region $REGION cloudformation create-stack \
---stack-name microservices-ecs-cluster \
---template-body file://./autoscaling-ecs-cluster.yml \
+--stack-name microservices-ecs-nodes \
+--template-body file://./ecs-autoscaling-nodes.yml \
 --parameters \
 ParameterKey=ClusterName,ParameterValue=microservices-ecs \
 ParameterKey=NetworkStack,ParameterValue=${NETWORK_STACK} \

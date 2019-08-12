@@ -1,0 +1,19 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "ECS Auto Scaling Groups"
+
+Parameters:
+  
+  ClusterName:
+    Type: "String"
+    Description: "A name for this cluster."
+
+
+Resources:
+
+  # Define a cluster in ECS. This is the *logical grouping* not the actual hosts
+  # You don't need EC2 instances when running containers in Fargate, but you still need the cluster
+  EcsCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Ref ClusterName

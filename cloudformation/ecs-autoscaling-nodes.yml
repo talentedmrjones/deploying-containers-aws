@@ -9,7 +9,7 @@ Parameters:
 
   ClusterName:
     Type: "String"
-    Description: "A name for this cluster."
+    Description: "Which cluster will these nodes join?"
 
   NumNodes:
     Type: String
@@ -71,13 +71,6 @@ Resources:
         # allows ECS to manage resources like ELB for us
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
 
-
-  # Define a cluster in ECS. This is the *logical grouping* not the actual hosts
-  EcsCluster:
-    Type: "AWS::ECS::Cluster"
-    Properties:
-      ClusterName: !Ref ClusterName
-
   # Launch Configuration defines WHAT gets launched
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -101,7 +94,6 @@ Resources:
 
   # Auto Scaling Group defines WHERE it gets launched
   ClusterAutoScalingGroup:
-    DependsOn: EcsCluster # ensure ECS cluster is created first otherwise nodes won't have anything to join
     Type: AWS::AutoScaling::AutoScalingGroup
     UpdatePolicy:
       AutoScalingRollingUpdate:
@@ -119,11 +111,11 @@ Resources:
       MinSize: !Ref NumNodes
       VPCZoneIdentifier:
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetNodesAId
+            !Sub ${NetworkStack}-SubnetNodesA
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetNodesBId
+            !Sub ${NetworkStack}-SubnetNodesB
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetNodesCId
+            !Sub ${NetworkStack}-SubnetNodesC
       Tags:
         - Key: Cluster
           Value: !Ref ClusterName

@@ -6,6 +6,7 @@ Parameters:
   VpcSubnetCidrs:
     Type: String
     Description: "CIDR block for VPC. Subnets will be derived from this. Minimum size of /21"
+    Default: "10.100.0.0/16"
 
 Resources:
   Vpc:
