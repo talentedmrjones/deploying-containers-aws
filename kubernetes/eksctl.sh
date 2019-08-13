@@ -7,6 +7,6 @@ eksctl create cluster \
 --nodes-min 3 \
 --nodes-max 3 \
 --node-ami auto \
---vpc-private-subnets=subnet-0632a9a8a2706f958,subnet-066d8c85e986cd3a2,subnet-00bad100432a5d2ab \
---vpc-public-subnets=subnet-07e086e0f83a8c03b,subnet-0ec3063c069f0864e,subnet-0a8cfb228ff6bb753
+--vpc-private-subnets=<YOUR, private, subnets> \
+--vpc-public-subnets=<YOUR, public, subnets>
 
