@@ -1,7 +1,7 @@
 eksctl create cluster \
 --name microservices-k8s \
 --version 1.13 \
---nodegroup-name microservices-k8s-workers \
+--nodegroup-name workers \
 --node-type t3.medium \
 --nodes 3 \
 --nodes-min 3 \
