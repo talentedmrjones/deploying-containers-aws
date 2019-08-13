@@ -85,11 +85,11 @@ Resources:
              - Ref: ServiceSecurityGroup
           Subnets:
             - Fn::ImportValue:
-               !Sub ${NetworkStack}-SubnetNodesAId
+               !Sub ${NetworkStack}-SubnetNodesA
             - Fn::ImportValue:
-               !Sub ${NetworkStack}-SubnetNodesBId
+               !Sub ${NetworkStack}-SubnetNodesB
             - Fn::ImportValue:
-               !Sub ${NetworkStack}-SubnetNodesCId
+               !Sub ${NetworkStack}-SubnetNodesC
 
       LoadBalancers:
         - ContainerName: messages

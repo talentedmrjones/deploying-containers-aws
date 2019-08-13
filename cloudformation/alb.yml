@@ -24,11 +24,11 @@ Resources:
       Subnets:
           # add the 3 DMZ (public) subnets for access to the internet
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetElbAId
+            !Sub ${NetworkStack}-SubnetElbA
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetElbBId
+            !Sub ${NetworkStack}-SubnetElbB
         - Fn::ImportValue:
-            !Sub ${NetworkStack}-SubnetElbCId
+            !Sub ${NetworkStack}-SubnetElbC
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
           Value: '10'
