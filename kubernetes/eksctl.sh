@@ -26,4 +26,4 @@ kubectl get services
 
 kubectl expose deployment nginxhello --type=LoadBalancer --name=helloworld
 
-bectl get service helloworld
+kubectl get service helloworld
