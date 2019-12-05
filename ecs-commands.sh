@@ -6,7 +6,7 @@ ARTIFACT_BUCKET="cerulean-operations-us-east-2" # modify this to YOUR OWN value
 # create the base VPC and Subnets (public and private)
 aws --region $REGION cloudformation create-stack \
 --stack-name ${NETWORK_STACK} \
---template-body file://./vpc-subnets.yml \
+--template-body file://./network-vpc-subnets.yml \
 --parameters ParameterKey=VpcSubnetCidrs,ParameterValue=10.100.0.0/16 \
 && aws --region $REGION cloudformation wait stack-create-complete --stack-name ${NETWORK_STACK}
 
