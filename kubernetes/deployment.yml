@@ -6,16 +6,17 @@ metadata:
     app: nginx
 spec:
   replicas: 3
-  selector:
+  selector: # allows the deployment to find the pods
     matchLabels:
       app: nginx
+  # the following is for the POD
   template:
     metadata:
       labels:
         app: nginx
     spec:
       containers:
-      - name: nginx
-        image: nginxdemos/hello
-        ports:
-        - containerPort: 80
+        - name: nginx
+          image: nginxdemos/hello
+          ports:
+            - containerPort: 80

@@ -12,8 +12,7 @@ Parameters:
   SecretARN:
     Type: String
     Description: "Specify the ARN of the Secret in secrets manager"
-    #Change this to the ARN of YOUR secret.
-    Default: "arn:aws:secretsmanager:us-east-2:301228794388:secret:docker.cerulean-gU0eHG"
+    
 
 Resources:
 
@@ -80,7 +79,7 @@ Resources:
       ExecutionRoleArn: !Ref TaskExecutionRole
       ContainerDefinitions:
         - Name: billing
-          Image: docker.cerulean.systems/hello # start with a ready made image and update once ImageRepo has an image
+          Image: docker.cerulean.systems/nginxdemos/hello # start with a ready made image and update once ImageRepo has an image
           RepositoryCredentials:
             CredentialsParameter: !Ref SecretARN
           Environment:

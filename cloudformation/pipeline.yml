@@ -11,7 +11,7 @@ Parameters:
   ArtifactBucket:
     Type: String
     Description: "Name of S3 bucket (optional /prefix)"
-    Default: "cerulean-artifacts"
+    Default: "cerulean-artifacts-oregon"
 
 Resources:
 
